@@ -1,6 +1,8 @@
 # Contributing to context-absorb
 
-Thanks for your interest. This project is local-first, stdlib-only, and optimized for reliability over elegance. The goal is artifact-oriented context transfer between Claude Code and Codex CLI sessions: small surface area, minimal dependencies, predictable behavior across machines.
+Thanks for poking at this. A few things to know before you send a PR: the runtime uses only the Python standard library (pytest is the one dev dependency), and it runs entirely against the local Claude Code and Codex session files in your home directory. Patches that add a runtime dependency, pull session data over the network, or move state out of `~/.local/share/session-absorb/` probably won't land. Small, focused fixes do best - bug reports with a reproducer, missed edge cases in transcript parsing, ranking improvements that stay lexical, non-macOS fallbacks.
+
+Most users hit the project through the `/absorb` and `/session-absorb` slash commands. The CLI under those skills is what you'll be testing against.
 
 ## Quick development setup
 
@@ -15,7 +17,7 @@ After editing `skills/shared/session_absorb_core.py`, copy it to the installed r
 cp skills/shared/session_absorb_core.py ~/.local/share/session-absorb/session_absorb_core.py
 ```
 
-After editing `skills/claude/absorb/SKILL.md`, mirror it to the active skill location:
+After editing `skills/claude/absorb/SKILL.md`, mirror it to the active skill location so `/absorb` picks up the change:
 
 ```bash
 cp skills/claude/absorb/SKILL.md ~/.claude/skills/absorb/SKILL.md
@@ -26,30 +28,30 @@ cp skills/claude/absorb/SKILL.md ~/.claude/skills/absorb/SKILL.md
 | I want to | Edit |
 |---|---|
 | Add or fix runtime behavior | `skills/shared/session_absorb_core.py` |
-| Update Claude Code slash command behavior | `skills/claude/absorb/SKILL.md` |
-| Update canonical Claude skill | `skills/claude/session-absorb/SKILL.md` |
-| Update Codex skill | `skills/codex/session-absorb/SKILL.md` |
+| Update the `/absorb` slash command | `skills/claude/absorb/SKILL.md` |
+| Update the canonical Claude skill | `skills/claude/session-absorb/SKILL.md` |
+| Update the Codex skill | `skills/codex/session-absorb/SKILL.md` |
 | Add tests | `tests/test_*.py` |
 | Update reference docs | `docs/reference.md` |
 | Update architectural docs | `docs/architecture.md` |
 
-The Claude and Codex skill wrappers are thin `runpy` trampolines: edit the shared core first, the wrappers rarely need to change.
+The Claude and Codex skill wrappers are thin `runpy` trampolines. Edit the shared core first, the wrappers rarely need to change.
 
 ## Code style
 
 - Stdlib only at runtime. Pytest is the only dev dependency.
 - Python 3.10+ syntax is fine (PEP 604 unions allowed).
-- No emojis in code or comments unless they are part of the existing visual cue palette: `🟠 🟢 ◆C ◇X 🔍 🚀 🤝 🎯 📋 ↩️ 🪞 🔎 📝`.
+- No emojis in code or comments unless they're part of the existing visual cue palette: `🟠 🟢 ◆C ◇X 🔍 🚀 🤝 🎯 📋 ↩️ 🪞 🔎 📝`.
 - Use hyphens or colons, not em-dashes.
 - No hard-coded `/Users/<name>/...` paths anywhere - resolve via `Path.home()` or environment.
-- Source labels should route through `source_label()` (TTY) or `source_badge()` (chat menu). Do not hardcode `claude` / `codex` glyphs at call sites.
+- Source labels go through `source_label()` (TTY) or `source_badge()` (chat menu). Don't hardcode `claude` / `codex` glyphs at call sites.
 
 ## Testing requirements
 
-- All PRs must pass `python3 -m py_compile skills/shared/session_absorb_core.py` - this is a hard gate.
-- All PRs must pass `pytest -v` on macOS and Ubuntu. CI enforces both.
+- `python3 -m py_compile skills/shared/session_absorb_core.py` is a hard gate.
+- `pytest -v` must pass on macOS and Ubuntu. CI enforces both.
 - Behavioral changes need a smoke test in `tests/`.
-- macOS is verified end-to-end. Linux and Windows fallbacks exist as of v0.1.0 but are not yet exercised by maintainers in real-world use - bug reports and PRs from non-macOS users are especially welcome.
+- macOS is verified end-to-end. Linux and Windows fallbacks exist as of v0.1.0 but aren't exercised in real-world use yet - bug reports and PRs from non-macOS users are especially welcome.
 
 ## PR checklist
 
