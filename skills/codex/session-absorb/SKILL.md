@@ -1,7 +1,7 @@
 ---
 name: session-absorb
 description: Use when you need to absorb, merge, or consult context from another Codex or Claude Code session without copy-pasting, including native fork launch for same-CLI sessions and transcript-backed bridge briefs across CLIs.
-argument-hint: "<list|pick|init|digest|ask|brief|launch|db|web|install> [args]"
+argument-hint: "<list|pick|init|digest|ask|brief|launch|handoff|inbox|ack|db|web|install> [args]"
 ---
 
 # Session Absorb
@@ -21,6 +21,9 @@ Canonical command surface: `session-absorb <subcommand> ...`
 | `ask` | extract an answer or ranked excerpts | `session-absorb ask --source codex --session <id> --question "What changed?"` |
 | `brief` | write a bridge brief for another session | `session-absorb brief --source claude --session <id> --question "Absorb and continue"` |
 | `launch` | open a native fork or brief-driven bridge in Terminal | `session-absorb launch --source claude --session <id> --target codex` |
+| `handoff` | write a brief, log it for the next session, optionally launch the target | `session-absorb handoff --done "refactor done" --pending "benchmarks"` |
+| `inbox` | list pending handoffs targeted at this session, cwd, or CLI | `session-absorb inbox` |
+| `ack` | mark a handoff absorbed (referenced by id from `inbox`) | `session-absorb ack 3 --note "got it"` |
 | `db` | inspect the SQLite session catalog and active-state counts | `session-absorb db` |
 | `web` | serve the live local dashboard for sessions and states | `session-absorb web --open-browser` |
 | `install` | install the runtime and skill wrappers into your home directories | `session-absorb install --repo-root <repo-root>` |
@@ -114,6 +117,18 @@ Launch a cross-CLI bridge session from a brief:
 
 ```bash
 session-absorb launch --source claude --session <session-id> --target codex --question "Absorb the design work and continue implementation."
+
+Cross-CLI handoff with explicit ack. From Codex, push to a fresh Claude session and require ack:
+
+```bash
+session-absorb handoff --target-cli claude --require-ack --done "refactor complete" --pending "performance benchmarks"
+```
+
+Later, check whether Claude actually absorbed it:
+
+```bash
+session-absorb inbox --show-all
+```
 
 Open the live dashboard:
 

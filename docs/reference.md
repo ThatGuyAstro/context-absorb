@@ -249,6 +249,83 @@ session-absorb last brief --question "Absorb everything from this morning"
 session-absorb last show
 ```
 
+## `session-absorb handoff`
+
+_Reach for this when: you're done with this work and someone else (or future-you, in another session) needs to pick it up._
+
+Writes a bridge brief, optionally launches the target CLI, and logs a row to the inbox so the receiving session can find it. When any of `--done`, `--pending`, or `--blocked` is supplied, the brief gets a `## Handoff Notes` section at the top with those fields.
+
+Flags:
+
+- `--source {claude,codex}` - source CLI (defaults to env: `CLAUDE_CODE_SESSION_ID` / `CODEX_SESSION_ID`)
+- `--session <selector>` - source session (defaults to current session)
+- `--target-cli {claude,codex}` - which CLI should pick this up (defaults to source CLI)
+- `--target-cwd <path>` - cwd-prefix filter for inbox match
+- `--target-session <selector>` - exact target session id or alias
+- `--done <text>` - what's done
+- `--pending <text>` - what's pending
+- `--blocked <text>` - what's blocked
+- `--launch / --no-launch` - immediate target launch (default: True if cross-CLI or `--target-session` given)
+- `--require-ack` - flag the handoff as needing acknowledgment
+- `--question <text>` - focus question for the brief
+- `--workspace <path>` - brief output workspace
+- `--limit <n>` - excerpt limit (default: `8`)
+- `--dry-run` - print the launch command without executing
+
+Examples:
+
+```bash
+# Same-CLI handoff to a fresh fork, with a structured note
+session-absorb handoff --done "auth refactor merged" --pending "tests for /login" --blocked "needs DB migration review"
+
+# Cross-CLI handoff: from Codex to Claude, immediate launch
+session-absorb handoff --target-cli claude --done "stripe webhooks wired up"
+
+# Async handoff: write the brief and log it, don't launch (someone else picks it up)
+session-absorb handoff --no-launch --target-cwd ~/proj/api --pending "wire up rate limits" --require-ack
+```
+
+## `session-absorb inbox`
+
+_Reach for this when: you're starting a session and want to know if anything was handed off to you._
+
+Lists pending handoffs targeted at the current session. By default, matches against your CLI, your cwd (prefix), and your session id. A handoff matches when each of `target_cli`, `target_cwd`, and `target_session_id` is either null or matches you. Acked or expired handoffs are excluded unless `--show-all` is set.
+
+Flags:
+
+- `--source {claude,codex,all}` - filter target_cli (default: env, fallback `all`)
+- `--cwd <path>` - cwd to match against (default: `$PWD`)
+- `--show-all` - include acked and expired handoffs
+- `--json` - print JSON instead of a table
+- `--limit <n>` - max rows to display
+
+Examples:
+
+```bash
+session-absorb inbox
+session-absorb inbox --json
+session-absorb inbox --show-all
+session-absorb inbox --cwd ~/proj/api
+```
+
+## `session-absorb ack <handoff-id>`
+
+_Reach for this when: you've absorbed a handoff and want the source session to know it landed._
+
+Marks a handoff as acknowledged. The source session can then see the ack via `session-absorb inbox --show-all`.
+
+Flags:
+
+- positional `<handoff-id>` - row id from `inbox` output (required)
+- `--note <text>` - optional note attached to the ack
+
+Examples:
+
+```bash
+session-absorb ack 3
+session-absorb ack 3 --note "picked it up, continuing now"
+```
+
 ## `session-absorb fork-myself`
 
 _Reach for this when: you're about to try something risky and want a parallel session that inherits everything._
@@ -330,6 +407,8 @@ Source differentiation stays consistent across every output surface:
 | `/absorb` AskUserQuestion picker | `🟠` orange circle | `🟢` green circle | Plus `📋` for the manual-pick escape option |
 | Self marker | `*self*` suffix in plain output, `is_current: true` in JSON | same | Matched against `CLAUDE_CODE_SESSION_ID` / `CODEX_SESSION_ID` env vars |
 
+`inbox` output uses the same source-color encoding as `list`: orange for Claude, cyan for Codex in TTY, `🟠` / `🟢` in chat menus, `◆C` / `◇X` in plain text.
+
 ## Environment variables
 
 - `CLAUDE_CODE_SESSION_ID` - exported by Claude Code into subprocess env. When present and matching a session's `session_id`, that record is flagged `is_current: true` in JSON output and annotated `*self*` in plain output.
@@ -348,6 +427,9 @@ Lives at `skills/claude/absorb/SKILL.md` (alias of `/session-absorb`). Routes by
 | `/absorb last [action]` | B | Pass-through to `session-absorb last`. Default action `digest`. |
 | `/absorb pick` | B | Forces the multi-step click picker. |
 | `/absorb fork-myself` | B | Pass-through to `session-absorb fork-myself`. Forks your current active session. |
+| `/absorb handoff [args]` | C | Pass-through to `session-absorb handoff`. Writes a brief, logs to inbox, optionally launches target. |
+| `/absorb inbox [args]` | C | Pass-through to `session-absorb inbox`. Shows pending handoffs targeted at this session. |
+| `/absorb ack <id> [--note <text>]` | C | Pass-through to `session-absorb ack`. Marks a handoff absorbed. |
 | `/absorb <subcommand> [args]` | C | Direct pass-through to `session-absorb`. |
 | `/absorb <free text>` | D | Haiku subagent resolves intent (session match + verb) and runs the command in one shot. |
 

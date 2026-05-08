@@ -1,7 +1,7 @@
 ---
 name: session-absorb
 description: Use when you need to absorb, merge, or consult context from another Claude Code or Codex session without copy-pasting, including native Claude fork launch, Codex fork launch, transcript-backed bridge briefs, and focused session Q and A.
-argument-hint: "<list|pick|init|digest|ask|brief|launch|db|web|install> [args]"
+argument-hint: "<list|pick|init|digest|ask|brief|launch|handoff|inbox|ack|db|web|install> [args]"
 ---
 
 # Session Absorb
@@ -21,6 +21,9 @@ Canonical slash command: `/session-absorb`
 | `ask` | query a session or build ranked excerpts | `/session-absorb ask --source codex --session <id> --question "What changed?"` |
 | `brief` | write a bridge brief | `/session-absorb brief --source claude --session <id> --question "Absorb and continue"` |
 | `launch` | open a native fork or bridge session in Terminal | `/session-absorb launch --source codex --session <id> --target claude` |
+| `handoff` | write a brief, log it for the next session, optionally launch the target | `/session-absorb handoff --done "auth merged" --pending "tests"` |
+| `inbox` | list pending handoffs targeted at this session, cwd, or CLI | `/session-absorb inbox` |
+| `ack` | mark a handoff absorbed (referenced by id from `inbox`) | `/session-absorb ack 3 --note "picked it up"` |
 | `db` | inspect the SQLite session catalog and active-state counts | `/session-absorb db` |
 | `web` | serve the live local dashboard for sessions and states | `/session-absorb web --open-browser` |
 | `install` | install the runtime and skill wrappers into both home registries | `/session-absorb install --repo-root <repo-root>` |
@@ -96,7 +99,27 @@ session-absorb launch --source claude --session DASH1 --mode native
 ```bash
 session-absorb launch --source codex --session OPS42 --target claude --question "Absorb the implementation context and continue from there."
 
-7. Open the live dashboard:
+7. Hand off to the next session, then ack from the receiving side:
+
+In the source session (end of day, work half-done):
+
+```bash
+session-absorb handoff --no-launch --target-cwd "$(pwd)" --done "API routes wired" --pending "frontend integration" --blocked "Stripe key"
+```
+
+Next morning, in a fresh session in the same directory:
+
+```bash
+session-absorb inbox
+```
+
+After reading the brief, mark it absorbed:
+
+```bash
+session-absorb ack 3 --note "picked it up, continuing now"
+```
+
+8. Open the live dashboard:
 
 ```bash
 session-absorb web --open-browser

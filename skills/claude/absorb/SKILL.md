@@ -14,7 +14,7 @@ Classify `{{ARGUMENTS}}` and pick a path:
 
 1. No args → **Path A: cwd auto-default** (most common, 1-click)
 2. First arg is `pick` / `here` / `last` → **Path B: shortcut**
-3. First arg is `list|pick|init|digest|ask|brief|launch|here|last|fork-myself|db|web|install` → **Path C: pass-through**
+3. First arg is `list|pick|init|digest|ask|brief|launch|here|last|fork-myself|handoff|inbox|ack|db|web|install` → **Path C: pass-through**
 4. Free text → **Path D: Haiku natural-language dispatch**
 
 ## Path A: bare `/absorb` (cwd auto-default)
@@ -72,14 +72,14 @@ For 🎯 More, render a follow-up AskUserQuestion:
 > Options (max 4):
 > 1. `🔎 Ask question` — description: `Ask a targeted question (uses default text).`
 > 2. `📝 Brief only` — description: `Write a bridge brief to .session-absorb/briefs/ without launching.`
-> 3. `🪞 Fork myself` — description: `Fork the CURRENT session (not the picked one) into a new Terminal.`
+> 3. `📦 Handoff` - description: `Hand this session off with a structured note for the next picker-up.`
 > 4. `↩️ Back`
 
 | Secondary | Command |
 |---|---|
 | 🔎 Ask question | `$HOME/.local/bin/session-absorb ask --source <s> --session <c> --question "<default ask text>"` |
 | 📝 Brief only | `$HOME/.local/bin/session-absorb brief --source <s> --session <c> --question "<default brief text>"` |
-| 🪞 Fork myself | `$HOME/.local/bin/session-absorb fork-myself` (ignores the picked session entirely - forks the user's CURRENT active session via `CLAUDE_CODE_SESSION_ID`) |
+| 📦 Handoff | `$HOME/.local/bin/session-absorb handoff --source <s> --session <c>` (plus any `--done`/`--pending`/`--blocked` text the user provides; runs against the picked session as source) |
 | ↩️ Back | re-render Step 3 |
 
 ### Default questions (do NOT prompt)
@@ -152,6 +152,16 @@ AskUserQuestion option labels (chat-rendered, color via emoji):
 - `✅` `❌` `↩️` `🔍` `📝` `🚀` for control affordances
 
 Plain-text contexts (chat menu, terminal, curses): `◆C` (Claude) / `◇X` (Codex) — runtime emits these automatically.
+
+## Inbox check on session start
+
+When `/absorb` is invoked with no args (Path A), before rendering the action picker, run:
+
+```bash
+$HOME/.local/bin/session-absorb inbox --json --limit 5
+```
+
+If the result is non-empty (pending handoffs targeted at this cwd, CLI, or session id), surface a 1-line summary at the top of the response - "📦 N pending handoff(s) for this session" - and offer to absorb the most recent one before continuing with the normal Path A flow. The user can then run `/absorb ack <id>` after they've digested it.
 
 ## Important constraints
 

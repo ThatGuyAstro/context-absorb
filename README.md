@@ -40,6 +40,15 @@ In the picker, choose the Codex session. Then "Handoff to other CLI". A brief ge
 
 New Terminal window, new Claude session, same context. The session you're in now keeps going untouched.
 
+**End of the day, hand off to tomorrow.** You shipped half a PR. You won't remember the state by morning. Write a handoff for the next session that opens in this directory.
+
+```
+session-absorb handoff --no-launch --target-cwd "$(pwd)" \
+    --done "API routes done" --pending "frontend wiring" --blocked "Stripe key"
+```
+
+Tomorrow's session runs `/absorb inbox`, sees the pending handoff, reads the brief, picks up where you stopped.
+
 ## Install
 
 ```bash
@@ -93,13 +102,15 @@ For handoff, same-platform transfers prefer native forks: `claude -r <session> -
 
 ## Commands
 
-The shared CLI exposes twelve subcommands. The ones you'll touch directly:
+The shared CLI exposes the subcommands you'll touch directly:
 
 **Find a session:** `list` (interactive picker or table), `init` (assign or override an alias code), `pick` (select by number from the last chat menu).
 
 **Do something with it:** `digest`, `ask --question`, `brief`, `launch` (native fork or cross-platform handoff).
 
 **Shortcuts:** `here [action]` for the cwd default, `last [action]` for anywhere, `fork-myself` for the current session.
+
+**Handoff:** `handoff` (write a brief and log it for the next session), `inbox` (list pending handoffs aimed at you), `ack` (mark one absorbed).
 
 **Plumbing:** `db` to inspect the SQLite catalog, `web` to serve a local live dashboard, `install` to (re)install the runtime and skills.
 

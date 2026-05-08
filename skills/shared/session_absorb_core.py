@@ -449,6 +449,38 @@ def catalog_connection() -> sqlite3.Connection:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_menu_snapshots_created ON menu_snapshots(created_at DESC)"
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS handoffs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            source_cli TEXT NOT NULL,
+            source_session_id TEXT NOT NULL,
+            source_cwd TEXT NOT NULL,
+            target_cli TEXT,
+            target_cwd TEXT,
+            target_session_id TEXT,
+            brief_path TEXT,
+            note_done TEXT,
+            note_pending TEXT,
+            note_blocked TEXT,
+            require_ack INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'pending',
+            ack_at TEXT,
+            ack_session_id TEXT,
+            ack_note TEXT
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_handoffs_target_cwd ON handoffs(target_cwd)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_handoffs_target_session ON handoffs(target_session_id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_handoffs_status ON handoffs(status)"
+    )
     return conn
 
 
@@ -1703,6 +1735,7 @@ def write_brief(
     tools: Counter[str],
     *,
     limit: int,
+    notes: dict | None = None,
 ) -> Path:
     stamp = utc_now().strftime("%Y%m%dT%H%M%SZ")
     safe_id = session.session_id.replace("/", "-")
@@ -1722,6 +1755,28 @@ def write_brief(
         f"- CWD: `{session.cwd or 'unknown'}`",
         f"- Transcript: `{session.transcript_path or 'missing'}`",
         "",
+    ]
+    if notes:
+        done = (notes.get("done") or "").strip()
+        pending = (notes.get("pending") or "").strip()
+        blocked = (notes.get("blocked") or "").strip()
+        if done or pending or blocked:
+            lines.extend([
+                "## Handoff Notes",
+                "",
+                "### What's done",
+                done or "(none)",
+                "",
+                "### What's pending",
+                pending or "(none)",
+                "",
+                "### What's blocked",
+                blocked or "(none)",
+                "",
+                "---",
+                "",
+            ])
+    lines.extend([
         "## Absorb Goal",
         "",
         question or "Absorb the important context from this session into the current conversation.",
@@ -1731,7 +1786,7 @@ def write_brief(
         f"- Status: `{material_state}`",
         f"- Detail: {material_detail or 'ready'}",
         "",
-    ]
+    ])
     if tools:
         lines.extend(["## Dominant tools", "", *[f"- `{name}` x{count}" for name, count in tools.most_common(10)], ""])
     if recent_users:
@@ -2925,6 +2980,314 @@ def command_launch(args: argparse.Namespace) -> int:
     return 0
 
 
+def insert_handoff(
+    source_cli: str,
+    source_session_id: str,
+    source_cwd: str,
+    target_cli: str | None,
+    target_cwd: str | None,
+    target_session_id: str | None,
+    brief_path: str | None,
+    note_done: str | None,
+    note_pending: str | None,
+    note_blocked: str | None,
+    require_ack: bool,
+) -> int:
+    created_at = utc_now().isoformat()
+    with catalog_connection() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO handoffs (
+                created_at, source_cli, source_session_id, source_cwd,
+                target_cli, target_cwd, target_session_id, brief_path,
+                note_done, note_pending, note_blocked, require_ack, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+            """,
+            (
+                created_at,
+                source_cli,
+                source_session_id,
+                source_cwd,
+                target_cli,
+                target_cwd,
+                target_session_id,
+                brief_path,
+                note_done,
+                note_pending,
+                note_blocked,
+                int(bool(require_ack)),
+            ),
+        )
+        conn.commit()
+        return int(cursor.lastrowid)
+
+
+def fetch_handoff_by_id(handoff_id: int) -> dict | None:
+    with catalog_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM handoffs WHERE id = ?", (handoff_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def fetch_inbox(
+    target_cli: str | None,
+    cwd: str,
+    session_id: str | None,
+    *,
+    show_all: bool,
+    limit: int,
+) -> list[dict]:
+    with catalog_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM handoffs ORDER BY id DESC"
+        ).fetchall()
+    results: list[dict] = []
+    for row in rows:
+        item = dict(row)
+        if not show_all and item.get("status") != "pending":
+            continue
+        t_cli = item.get("target_cli")
+        if t_cli and target_cli and t_cli != target_cli:
+            continue
+        t_cwd = item.get("target_cwd")
+        if t_cwd and not cwd.startswith(t_cwd):
+            continue
+        t_sess = item.get("target_session_id")
+        if t_sess and session_id and t_sess != session_id:
+            continue
+        if t_sess and not session_id:
+            continue
+        results.append(item)
+        if len(results) >= limit:
+            break
+    return results
+
+
+def update_handoff_ack(handoff_id: int, ack_session_id: str | None, note: str | None) -> bool:
+    ack_at = utc_now().isoformat()
+    with catalog_connection() as conn:
+        cursor = conn.execute(
+            """
+            UPDATE handoffs
+            SET status = 'acked', ack_at = ?, ack_session_id = ?, ack_note = ?
+            WHERE id = ?
+            """,
+            (ack_at, ack_session_id, note, handoff_id),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def _relative_age(iso: str | None) -> str:
+    if not iso:
+        return "-"
+    parsed = parse_iso_datetime(iso)
+    if not parsed:
+        return "-"
+    delta = utc_now() - parsed
+    seconds = int(delta.total_seconds())
+    if seconds < 60:
+        return f"{seconds}s ago"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes}m ago"
+    hours = minutes // 60
+    if hours < 48:
+        return f"{hours}h ago"
+    days = hours // 24
+    return f"{days}d ago"
+
+
+def format_handoff_row(row: dict) -> tuple[str, str, str, str, str, str]:
+    rid = str(row.get("id") or "?")
+    age = _relative_age(row.get("created_at"))
+    src_cli = row.get("source_cli") or "?"
+    src_sess = (row.get("source_session_id") or "")[:8]
+    src_cwd = row.get("source_cwd") or "?"
+    src_cwd_short = src_cwd
+    home = str(Path.home())
+    if src_cwd_short.startswith(home):
+        src_cwd_short = "~" + src_cwd_short[len(home):]
+    badge = source_badge(src_cli)
+    frm = f"{badge} {src_cli}:{src_sess} ({src_cwd_short})"
+    brief = row.get("brief_path") or "-"
+    if brief and brief != "-":
+        brief_short = brief
+        if brief_short.startswith(home):
+            brief_short = "~" + brief_short[len(home):]
+        brief = brief_short
+    req = "yes" if row.get("require_ack") else "no"
+    status = row.get("status") or "pending"
+    return rid, age, frm, brief, req, status
+
+
+def command_handoff(args: argparse.Namespace) -> int:
+    source = args.source
+    if not source:
+        if os.environ.get("CLAUDE_CODE_SESSION_ID"):
+            source = "claude"
+        elif os.environ.get("CODEX_SESSION_ID"):
+            source = "codex"
+        else:
+            raise SystemExit(
+                "Cannot infer --source: no CLAUDE_CODE_SESSION_ID or CODEX_SESSION_ID env var set. Pass --source explicitly."
+            )
+
+    session_selector = args.session
+    if not session_selector:
+        env_id = current_session_id()
+        if not env_id:
+            raise SystemExit("--session not given and no current session id env var present.")
+        session_selector = env_id
+
+    session = find_session_or_die(source, session_selector)
+
+    target_cli = args.target_cli or source
+    target_cwd = args.target_cwd
+    target_session_id = args.target_session
+
+    if args.launch is None:
+        launch = (target_cli != source) or bool(target_session_id)
+    else:
+        launch = args.launch
+
+    workspace = Path(args.workspace or os.getcwd()).resolve()
+
+    excerpts, tools = extract_session_material(session)
+    material_state, material_detail = classify_material_state(session, excerpts)
+    brief_path: Path | None = None
+    if material_state in {"missing_transcript", "empty_transcript"}:
+        # Skip brief generation if transcript is empty; still record the handoff with notes.
+        brief_path = None
+    else:
+        notes = {
+            "done": args.done,
+            "pending": args.pending,
+            "blocked": args.blocked,
+        }
+        brief_path = write_brief(
+            workspace,
+            session,
+            args.question,
+            excerpts,
+            tools,
+            limit=args.limit,
+            notes=notes,
+        )
+
+    if args.dry_run:
+        print("Plan:")
+        print(f"  source         : {source}:{session.session_id}")
+        print(f"  source_cwd     : {session.cwd or os.getcwd()}")
+        print(f"  target_cli     : {target_cli}")
+        print(f"  target_cwd     : {target_cwd or '(any)'}")
+        print(f"  target_session : {target_session_id or '(any)'}")
+        print(f"  brief_path     : {brief_path or '(none - transcript not ready)'}")
+        print(f"  require_ack    : {args.require_ack}")
+        print(f"  launch         : {launch}")
+        return 0
+
+    handoff_id = insert_handoff(
+        source_cli=source,
+        source_session_id=session.session_id,
+        source_cwd=session.cwd or os.getcwd(),
+        target_cli=target_cli,
+        target_cwd=target_cwd,
+        target_session_id=target_session_id,
+        brief_path=str(brief_path) if brief_path else None,
+        note_done=args.done,
+        note_pending=args.pending,
+        note_blocked=args.blocked,
+        require_ack=args.require_ack,
+    )
+
+    launch_status = "skipped"
+    if launch:
+        if target_cli == source and brief_path is None:
+            _, shell_cmd = shell_command_for_native_fork(session, args.question)
+            open_in_terminal(shell_cmd, False)
+            launch_status = "native fork"
+        elif brief_path is not None:
+            cwd = session.cwd or str(workspace)
+            shell_cmd = shell_command_for_brief_launch(target_cli, cwd, brief_path, args.question)
+            open_in_terminal(shell_cmd, False)
+            launch_status = "brief launch"
+        else:
+            launch_status = "skipped (no brief, cross-CLI requires brief)"
+
+    print(f"Handoff #{handoff_id} recorded.")
+    print(f"  target_cli   : {target_cli}")
+    print(f"  target_cwd   : {target_cwd or '(any)'}")
+    print(f"  brief_path   : {brief_path or '(none)'}")
+    print(f"  launch       : {launch_status}")
+    print(f"  require_ack  : {args.require_ack}")
+    return 0
+
+
+def command_inbox(args: argparse.Namespace) -> int:
+    target_cli = args.source
+    if target_cli in (None, "all"):
+        if target_cli is None:
+            if os.environ.get("CLAUDE_CODE_SESSION_ID"):
+                target_cli = "claude"
+            elif os.environ.get("CODEX_SESSION_ID"):
+                target_cli = "codex"
+            else:
+                target_cli = None
+        else:
+            target_cli = None
+
+    cwd = str(Path(args.cwd or os.getcwd()).resolve())
+    session_id = current_session_id()
+
+    items = fetch_inbox(
+        target_cli=target_cli,
+        cwd=cwd,
+        session_id=session_id,
+        show_all=args.show_all,
+        limit=args.limit,
+    )
+
+    if args.json:
+        print(json.dumps(items, indent=2))
+        return 0
+
+    if not items:
+        print("# Inbox: 0 pending handoff(s)")
+        return 0
+
+    print(f"# Inbox: {len(items)} pending handoff(s)")
+    print()
+    header = f"  {'ID':<4}{'AGE':<10}{'FROM':<48}{'BRIEF':<50}{'REQ_ACK':<9}{'STATUS':<8}"
+    print(header)
+    print(f"  {'-' * 2:<4}{'-' * 8:<10}{'-' * 46:<48}{'-' * 48:<50}{'-' * 7:<9}{'-' * 7:<8}")
+    for row in items:
+        rid, age, frm, brief, req, status = format_handoff_row(row)
+        if len(frm) > 47:
+            frm = frm[:44] + "..."
+        if len(brief) > 49:
+            brief = brief[:46] + "..."
+        print(f"  {rid:<4}{age:<10}{frm:<48}{brief:<50}{req:<9}{status:<8}")
+    return 0
+
+
+def command_ack(args: argparse.Namespace) -> int:
+    handoff_id = args.handoff_id
+    row = fetch_handoff_by_id(handoff_id)
+    if row is None:
+        raise SystemExit(f"Handoff not found: #{handoff_id}")
+    ack_session = current_session_id()
+    ok = update_handoff_ack(handoff_id, ack_session, args.note)
+    if not ok:
+        raise SystemExit(f"Failed to update handoff #{handoff_id}.")
+    src_cli = row.get("source_cli") or "?"
+    src_sess = row.get("source_session_id") or "?"
+    brief = row.get("brief_path") or "(none)"
+    print(f"Acknowledged handoff #{handoff_id}. Source: {src_cli}:{src_sess}. Brief: {brief}.")
+    return 0
+
+
 def command_hook_session_start(args: argparse.Namespace) -> int:
     try:
         payload = json.load(sys.stdin)
@@ -3128,6 +3491,50 @@ def build_parser() -> argparse.ArgumentParser:
     launch_parser.add_argument("--limit", type=int, default=8)
     launch_parser.add_argument("--dry-run", action="store_true")
     launch_parser.set_defaults(func=command_launch)
+
+    handoff_parser = subparsers.add_parser(
+        "handoff",
+        help="Record a structured handoff with optional brief and launch.",
+    )
+    handoff_parser.add_argument("--source", choices=["codex", "claude"])
+    handoff_parser.add_argument("--session")
+    handoff_parser.add_argument("--target-cli", choices=["codex", "claude"])
+    handoff_parser.add_argument("--target-cwd")
+    handoff_parser.add_argument("--target-session")
+    handoff_parser.add_argument("--done")
+    handoff_parser.add_argument("--pending")
+    handoff_parser.add_argument("--blocked")
+    handoff_parser.add_argument(
+        "--launch",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Force launch on/off. Defaults to True when target differs from source or target-session is set.",
+    )
+    handoff_parser.add_argument("--require-ack", action="store_true")
+    handoff_parser.add_argument("--question")
+    handoff_parser.add_argument("--workspace")
+    handoff_parser.add_argument("--limit", type=int, default=8)
+    handoff_parser.add_argument("--dry-run", action="store_true")
+    handoff_parser.set_defaults(func=command_handoff)
+
+    inbox_parser = subparsers.add_parser(
+        "inbox",
+        help="Show pending handoffs targeted at the current CLI / cwd / session.",
+    )
+    inbox_parser.add_argument("--source", choices=["codex", "claude", "all"])
+    inbox_parser.add_argument("--cwd")
+    inbox_parser.add_argument("--show-all", action="store_true")
+    inbox_parser.add_argument("--json", action="store_true")
+    inbox_parser.add_argument("--limit", type=int, default=20)
+    inbox_parser.set_defaults(func=command_inbox)
+
+    ack_parser = subparsers.add_parser(
+        "ack",
+        help="Acknowledge a pending handoff by id.",
+    )
+    ack_parser.add_argument("handoff_id", type=int)
+    ack_parser.add_argument("--note")
+    ack_parser.set_defaults(func=command_ack)
 
     web_parser = subparsers.add_parser(
         "web",

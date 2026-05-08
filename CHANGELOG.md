@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `handoff` subcommand for structured cross-session work transfer with optional note fields (`--done`, `--pending`, `--blocked`) and acknowledgment tracking.
+- `inbox` subcommand to show pending handoffs targeted at the current cwd, CLI, or session id.
+- `ack` subcommand to mark a handoff as absorbed by the receiving session.
+- New `handoffs` SQLite table at `~/.local/share/session-absorb/sessions.db` for handoff state tracking.
+- Brief writer now prepends a `## Handoff Notes` section (What's done / What's pending / What's blocked) when handoff notes are supplied.
+
 ## [0.1.0] - 2026-05-08
 
 ### Added
