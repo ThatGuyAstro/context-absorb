@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+HOME_DIR="${HOME:-$(cd ~ && pwd)}"
+exec python3 "$HOME_DIR/.local/share/session-absorb/session_absorb_core.py" "$@"

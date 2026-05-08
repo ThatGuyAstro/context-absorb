@@ -1,0 +1,62 @@
+name: Bug report
+description: Report a problem with session-absorb
+title: "[bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please include the output of `session-absorb --help` so we know which version you're on, plus a short repro. The more specific the command and platform, the faster this gets fixed.
+  - type: input
+    id: command
+    attributes:
+      label: What did you run?
+      placeholder: session-absorb digest --source claude --session TMS121
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened?
+      description: Paste the actual output, error message, or describe the unexpected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: 3.11.7
+    validations:
+      required: true
+  - type: input
+    id: claude
+    attributes:
+      label: Claude Code version
+      placeholder: 2.1.133 or n/a
+  - type: input
+    id: codex
+    attributes:
+      label: Codex version
+      placeholder: n/a
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Logs, screenshots, related context.

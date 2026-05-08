@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/ThatGuyAstro/context-absorb/blob/main/docs/reference.md
+    about: Full command reference and architecture docs.
+  - name: Discussions
+    url: https://github.com/ThatGuyAstro/context-absorb/discussions
+    about: Questions, feature ideas, and general discussion.

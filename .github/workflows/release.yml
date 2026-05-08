@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build source tarball
+        id: build
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          TARBALL="context-absorb-${VERSION}.tar.gz"
+          git archive --format=tar.gz --prefix="context-absorb-${VERSION}/" -o "$TARBALL" HEAD
+          SHA256="$(shasum -a 256 "$TARBALL" | cut -d' ' -f1)"
+          {
+            echo "tarball=$TARBALL"
+            echo "sha256=$SHA256"
+            echo "version=$VERSION"
+          } >> "$GITHUB_OUTPUT"
+          echo "Tarball SHA256: $SHA256"
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          {
+            echo "notes<<EOF"
+            echo "## Install"
+            echo ""
+            echo '```bash'
+            echo "curl -sSL https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/install.sh | bash"
+            echo '```'
+            echo ""
+            echo "## Tarball SHA256"
+            echo ""
+            echo '```'
+            echo "${{ steps.build.outputs.sha256 }}"
+            echo '```'
+            echo ""
+            echo "Use this SHA in your Homebrew formula. See CHANGELOG.md for the full list of changes."
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: ${{ steps.notes.outputs.notes }}
+          files: ${{ steps.build.outputs.tarball }}
+          draft: false
+          prerelease: false

@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Project runtime artifacts (user-specific, not for VCS)
+.session-absorb/
+.context-copilot/
+.claude/
+.playwright-cli/
+*.db
+*.log
+
+# Local environment overrides
+.env
+.env.local
+
+# Note: docs/codebase/ IS intentionally checked in (generated durable project docs).
+# Do not add docs/codebase/ here.

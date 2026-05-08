@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest an idea or enhancement
+title: "[feature] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Please describe the problem first, then your proposed solution. Concrete use cases help more than abstract requests.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem you're trying to solve
+      description: What is awkward, missing, or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution / what would you want it to do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area?
+      options:
+        - CLI subcommand
+        - Claude skill
+        - Codex skill
+        - Web dashboard
+        - Install / packaging
+        - Docs
+        - Other
+    validations:
+      required: true

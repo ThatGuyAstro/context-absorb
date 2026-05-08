@@ -1,0 +1,4 @@
+interface:
+  display_name: "Session Absorb"
+  short_description: "Bridge Codex and Claude sessions without copy-paste"
+  default_prompt: "Absorb or merge another Codex or Claude session using the session-absorb runtime."
