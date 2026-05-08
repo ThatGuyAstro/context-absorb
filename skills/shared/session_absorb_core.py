@@ -3356,6 +3356,12 @@ def command_install(args: argparse.Namespace) -> int:
         results.append(
             install_skill_copy(claude_alias_source, CLAUDE_HOME / "skills" / "absorb")
         )
+    for alias_name in ("handoff", "inbox", "ack"):
+        alias_source = repo_root / "skills" / "claude" / alias_name
+        if alias_source.exists():
+            results.append(
+                install_skill_copy(alias_source, CLAUDE_HOME / "skills" / alias_name)
+            )
     print("\n".join(results))
     print()
     print("--- Onboarding ---")
@@ -3372,8 +3378,11 @@ def command_install(args: argparse.Namespace) -> int:
     print("    !sa fork-myself                # fork the CURRENT session into new Terminal")
     print("    !sa list --active-only         # list active sessions")
     print()
-    print("  For a clickable in-chat picker (slow but conversational):")
-    print("    /absorb")
+    print("  Slash commands available in Claude Code:")
+    print("    /absorb       # click picker, default daily flow")
+    print("    /handoff      # write a structured handoff (with --done / --pending / --blocked)")
+    print("    /inbox        # see pending handoffs targeted at this session / cwd / CLI")
+    print("    /ack <id>     # acknowledge a handoff so the source knows it landed")
     print()
     print("Full reference: see docs/reference.md or run `session-absorb --help`.")
     return 0
