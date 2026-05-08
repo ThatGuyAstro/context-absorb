@@ -52,7 +52,7 @@ Tomorrow's session runs `/inbox`, sees the pending handoff, reads the brief at `
 ## Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/ThatGuyAstro/context-absorb/v0.1.0/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/ThatGuyAstro/context-absorb/v0.1.1/install.sh | bash
 ```
 
 That installs the `session-absorb` command, the `/absorb`, `/session-absorb`, `/handoff`, `/inbox`, and `/ack` skills for Claude Code (plus `/session-absorb` for Codex), and a SessionStart hook that auto-tags new sessions with short alias codes (e.g. `TMS01`). Requires Python 3.10+. macOS-tested; Linux/Windows fallbacks landed but unverified.

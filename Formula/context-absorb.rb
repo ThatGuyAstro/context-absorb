@@ -1,8 +1,8 @@
 class ContextAbsorb < Formula
   desc "Cross-CLI session transfer tool for parallel AI coding sessions (Claude Code + Codex)"
   homepage "https://github.com/ThatGuyAstro/context-absorb"
-  url "https://github.com/ThatGuyAstro/context-absorb/archive/refs/tags/v0.1.0.tar.gz"
-  sha256 "f97f972b48d97f23ad13978b32781f3ef1246874cda9f83016f3ba2bc9cfd0ff"
+  url "https://github.com/ThatGuyAstro/context-absorb/archive/refs/tags/v0.1.1.tar.gz"
+  sha256 "REPLACE_WITH_V011_TARBALL_SHA256"
   license "MIT"
   head "https://github.com/ThatGuyAstro/context-absorb.git", branch: "main"
 

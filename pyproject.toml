@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "context-absorb"
-version = "0.1.0"
+version = "0.1.1"
 description = "Cross-CLI session transfer tool for parallel AI coding sessions (Claude Code + Codex)"
 readme = "README.md"
 requires-python = ">=3.10"
