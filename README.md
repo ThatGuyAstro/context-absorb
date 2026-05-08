@@ -125,8 +125,7 @@ Full flag-by-flag reference lives in [docs/reference.md](docs/reference.md). Arc
 - Live Claude questioning sometimes fails on resumed sessions with stale deferred-tool marker errors. The tool falls back to transcript extraction automatically.
 - Codex has no non-interactive fork, so cross-CLI handoff out of Codex always uses a brief.
 - Both CLIs need to be on the same machine. There is no remote session pulling.
-- Inbox cwd matching is a byte-exact prefix check. On macOS where `$(pwd)` and `os.getcwd()` can return different casing for the same directory, you may need to pass `--cwd "$(python3 -c 'import os; print(os.getcwd())')"` explicitly to `/inbox`. Fix planned, see issues.
-- Tests are smoke-level (18 pytest cases). Full coverage is on the roadmap.
+- Tests are smoke-level (19 pytest cases). Full coverage is on the roadmap.
 
 ## License + contributing
 

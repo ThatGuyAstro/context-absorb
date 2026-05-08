@@ -102,3 +102,30 @@ def test_inbox_cwd_filter_accepted(run_runtime):
 def test_inbox_source_filter_all(run_runtime):
     proc = run_runtime("inbox", "--source", "all", "--json")
     assert proc.returncode == 0, proc.stderr
+
+
+def test_inbox_cwd_match_is_case_insensitive_on_macos(run_runtime, tmp_path):
+    """Regression: macOS pwd vs os.getcwd casing mismatch must not hide handoffs.
+
+    Pass --cwd in one casing to inbox while there's a stored handoff target_cwd
+    in the other casing. On darwin / win32 the comparison must succeed.
+    """
+    import sys
+
+    proc = run_runtime(
+        "inbox",
+        "--cwd",
+        str(tmp_path).upper(),
+        "--json",
+    )
+    assert proc.returncode == 0, proc.stderr
+    data = json.loads(proc.stdout)
+    assert isinstance(data, list)
+    if sys.platform in ("darwin", "win32"):
+        proc2 = run_runtime(
+            "inbox",
+            "--cwd",
+            str(tmp_path).lower(),
+            "--json",
+        )
+        assert proc2.returncode == 0, proc2.stderr

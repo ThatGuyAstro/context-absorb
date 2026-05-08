@@ -3030,6 +3030,26 @@ def fetch_handoff_by_id(handoff_id: int) -> dict | None:
         return dict(row) if row else None
 
 
+def _path_for_compare(value: str) -> str:
+    """Normalize a path for case-insensitive prefix comparison on macOS / Windows."""
+    if sys.platform == "darwin" or sys.platform == "win32":
+        return value.casefold()
+    return value
+
+
+def _normalize_target_cwd(value: str | None) -> str | None:
+    """Resolve symlinks and recover canonical filesystem casing when the path exists."""
+    if not value:
+        return value
+    expanded = os.path.expanduser(value)
+    try:
+        if os.path.exists(expanded):
+            return os.path.realpath(expanded)
+    except OSError:
+        pass
+    return os.path.abspath(expanded)
+
+
 def fetch_inbox(
     target_cli: str | None,
     cwd: str,
@@ -3051,7 +3071,7 @@ def fetch_inbox(
         if t_cli and target_cli and t_cli != target_cli:
             continue
         t_cwd = item.get("target_cwd")
-        if t_cwd and not cwd.startswith(t_cwd):
+        if t_cwd and not _path_for_compare(cwd).startswith(_path_for_compare(t_cwd)):
             continue
         t_sess = item.get("target_session_id")
         if t_sess and session_id and t_sess != session_id:
@@ -3144,7 +3164,7 @@ def command_handoff(args: argparse.Namespace) -> int:
     session = find_session_or_die(source, session_selector)
 
     target_cli = args.target_cli or source
-    target_cwd = args.target_cwd
+    target_cwd = _normalize_target_cwd(args.target_cwd)
     target_session_id = args.target_session
 
     if args.launch is None:

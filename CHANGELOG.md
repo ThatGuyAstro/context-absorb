@@ -16,9 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Brief writer now prepends a `## Handoff Notes` section (What's done / What's pending / What's blocked) when handoff notes are supplied.
 - Dedicated top-level slash commands `/handoff`, `/inbox`, and `/ack` as thin alias skills - no need to remember `/absorb handoff ...` pass-through syntax.
 
-### Known issues
+### Fixed
 
-- Inbox cwd matching is byte-exact prefix. On macOS where `$(pwd)` and `os.getcwd()` can return different casing for the same directory (case-preserving but case-insensitive filesystem), an inbox lookup may miss a handoff stored with the other casing. Workaround: pass `--cwd "$(python3 -c 'import os; print(os.getcwd())')"` explicitly to `/inbox`. Fix planned.
+- Inbox cwd prefix matching is now case-insensitive on macOS and Windows where the filesystem itself is case-insensitive. A handoff stored with `/Users/sam/proj` will be found when the receiver's `os.getcwd()` returns `/Users/Sam/Proj`. Linux behavior unchanged (case-sensitive). Target cwd values are also normalized through `os.path.realpath` at insert time when the path exists. New regression test in `tests/test_handoff.py`.
 
 ## [0.1.0] - 2026-05-08
 
