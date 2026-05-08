@@ -41,20 +41,39 @@ Pick the Codex session (it's the green circle in the picker), choose `🤝 Hando
 End of the day, you've got one PR half-done. You won't remember the state by morning. You write a structured handoff to whichever Claude session opens in this cwd next.
 
 ```
-session-absorb handoff --no-launch --target-cwd "$(pwd)" --done "API routes wired" --pending "frontend integration" --blocked "waiting on Stripe API key"
+/handoff --no-launch --target-cwd "$(pwd)" \
+   --done "API routes wired" \
+   --pending "frontend integration" \
+   --blocked "waiting on Stripe API key"
 ```
 
-Tomorrow you start a Claude session in the same directory and run `/absorb inbox`. The pending handoff shows up. You read the brief and pick up exactly where you stopped.
+Two artifacts get written:
+
+- A markdown brief at `.session-absorb/briefs/<timestamp>-claude-<id>.md`. Your `## Handoff Notes` section (What's done / What's pending / What's blocked) leads, then session metadata, dominant tools, recent turns, and ranked transcript excerpts.
+- A row in `~/.local/share/session-absorb/sessions.db` `handoffs` table marking it pending and tying it to your cwd.
+
+Tomorrow you start a Claude session in the same directory and run `/inbox`. The pending handoff shows up:
+
+```
+# Inbox: 1 pending handoff(s)
+  ID  AGE       FROM                              BRIEF                       REQ_ACK  STATUS
+  --  --------  --------------------------------  --------------------------  -------  -------
+  3   16h ago   claude:f7f36dcf (~/proj/api)      .session-absorb/briefs/...  no       pending
+```
+
+You read the brief, pick up where you stopped, and run `/ack 3` so the row flips to `acked` with your session id and timestamp recorded.
 
 **5. Cross-CLI handoff with explicit ack**
 
 You ran a heavy refactor in Codex. You want Claude to take over. You also want to know whether Claude actually started.
 
 ```
-session-absorb handoff --target-cli claude --require-ack --done "refactor complete, all tests passing" --pending "performance benchmarks"
+/handoff --target-cli claude --require-ack \
+   --done "refactor complete, all tests passing" \
+   --pending "performance benchmarks"
 ```
 
-Claude session opens. After it absorbs the brief, it runs `session-absorb ack <id>`. Your Codex session can check `session-absorb inbox --show-all` to confirm the handoff was acknowledged.
+Because `--target-cli` differs from the source CLI, `--launch` defaults true: a new Claude Terminal opens immediately, primed to read the brief before doing anything. After Claude absorbs, it runs `/ack <id> --note "got it"`. Back in Codex, you check `session-absorb inbox --show-all` and see the row flipped to `acked` with the receiver's session id and your note attached.
 
 **6. One question, not a whole digest**
 

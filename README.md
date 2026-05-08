@@ -43,11 +43,11 @@ New Terminal window, new Claude session, same context. The session you're in now
 **End of the day, hand off to tomorrow.** You shipped half a PR. You won't remember the state by morning. Write a handoff for the next session that opens in this directory.
 
 ```
-session-absorb handoff --no-launch --target-cwd "$(pwd)" \
+/handoff --no-launch --target-cwd "$(pwd)" \
     --done "API routes done" --pending "frontend wiring" --blocked "Stripe key"
 ```
 
-Tomorrow's session runs `/absorb inbox`, sees the pending handoff, reads the brief, picks up where you stopped.
+Tomorrow's session runs `/inbox`, sees the pending handoff, reads the brief at `.session-absorb/briefs/...md`, then runs `/ack <id>` so you know it landed. The brief is plain markdown - your `--done` / `--pending` / `--blocked` notes lead, the ranked transcript excerpts follow.
 
 ## Install
 
@@ -55,7 +55,7 @@ Tomorrow's session runs `/absorb inbox`, sees the pending handoff, reads the bri
 curl -sSL https://raw.githubusercontent.com/ThatGuyAstro/context-absorb/v0.1.0/install.sh | bash
 ```
 
-That installs the `session-absorb` command, the `/absorb` and `/session-absorb` skills for both Claude Code and Codex, and a SessionStart hook that auto-tags new sessions with short alias codes (e.g. `TMS01`). Requires Python 3.10+. macOS-tested; Linux/Windows fallbacks landed but unverified.
+That installs the `session-absorb` command, the `/absorb`, `/session-absorb`, `/handoff`, `/inbox`, and `/ack` skills for Claude Code (plus `/session-absorb` for Codex), and a SessionStart hook that auto-tags new sessions with short alias codes (e.g. `TMS01`). Requires Python 3.10+. macOS-tested; Linux/Windows fallbacks landed but unverified.
 
 ## Demo
 
@@ -110,7 +110,7 @@ The shared CLI exposes the subcommands you'll touch directly:
 
 **Shortcuts:** `here [action]` for the cwd default, `last [action]` for anywhere, `fork-myself` for the current session.
 
-**Handoff:** `handoff` (write a brief and log it for the next session), `inbox` (list pending handoffs aimed at you), `ack` (mark one absorbed).
+**Handoff:** `handoff` (write a brief with structured `--done` / `--pending` / `--blocked` notes and log it for the next session), `inbox` (list pending handoffs aimed at you), `ack` (mark one absorbed). All three are also dedicated slash commands: `/handoff`, `/inbox`, `/ack`.
 
 **Plumbing:** `db` to inspect the SQLite catalog, `web` to serve a local live dashboard, `install` to (re)install the runtime and skills.
 
@@ -125,7 +125,8 @@ Full flag-by-flag reference lives in [docs/reference.md](docs/reference.md). Arc
 - Live Claude questioning sometimes fails on resumed sessions with stale deferred-tool marker errors. The tool falls back to transcript extraction automatically.
 - Codex has no non-interactive fork, so cross-CLI handoff out of Codex always uses a brief.
 - Both CLIs need to be on the same machine. There is no remote session pulling.
-- No formal test suite. Validation is `python3 -m py_compile` plus real CLI smoke tests.
+- Inbox cwd matching is a byte-exact prefix check. On macOS where `$(pwd)` and `os.getcwd()` can return different casing for the same directory, you may need to pass `--cwd "$(python3 -c 'import os; print(os.getcwd())')"` explicitly to `/inbox`. Fix planned, see issues.
+- Tests are smoke-level (18 pytest cases). Full coverage is on the roadmap.
 
 ## License + contributing
 

@@ -433,6 +433,18 @@ Lives at `skills/claude/absorb/SKILL.md` (alias of `/session-absorb`). Routes by
 | `/absorb <subcommand> [args]` | C | Direct pass-through to `session-absorb`. |
 | `/absorb <free text>` | D | Haiku subagent resolves intent (session match + verb) and runs the command in one shot. |
 
+## Dedicated slash commands (Claude Code)
+
+Three thin alias skills for the most common handoff verbs. Same behavior as the `/absorb <subcommand>` pass-through, fewer keystrokes.
+
+| Slash | Runs | Live at |
+|---|---|---|
+| `/handoff [args]` | `session-absorb handoff {{ARGUMENTS}}` | `skills/claude/handoff/SKILL.md` |
+| `/inbox [args]` | `session-absorb inbox {{ARGUMENTS}}` | `skills/claude/inbox/SKILL.md` |
+| `/ack <id> [--note]` | `session-absorb ack {{ARGUMENTS}}` | `skills/claude/ack/SKILL.md` |
+
+Each is registered with a tightly scoped description (`Use when the user types /<name>`) so they don't auto-fire on unrelated mentions of "handoff" or "inbox" in conversation. To see all the flags they accept, see the corresponding `session-absorb` subcommand sections above.
+
 ### Path A action menu
 
 Primary actions shown after a session is selected:

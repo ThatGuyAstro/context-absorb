@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ack` subcommand to mark a handoff as absorbed by the receiving session.
 - New `handoffs` SQLite table at `~/.local/share/session-absorb/sessions.db` for handoff state tracking.
 - Brief writer now prepends a `## Handoff Notes` section (What's done / What's pending / What's blocked) when handoff notes are supplied.
+- Dedicated top-level slash commands `/handoff`, `/inbox`, and `/ack` as thin alias skills - no need to remember `/absorb handoff ...` pass-through syntax.
+
+### Known issues
+
+- Inbox cwd matching is byte-exact prefix. On macOS where `$(pwd)` and `os.getcwd()` can return different casing for the same directory (case-preserving but case-insensitive filesystem), an inbox lookup may miss a handoff stored with the other casing. Workaround: pass `--cwd "$(python3 -c 'import os; print(os.getcwd())')"` explicitly to `/inbox`. Fix planned.
 
 ## [0.1.0] - 2026-05-08
 
